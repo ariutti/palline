@@ -16,9 +16,11 @@ void CircleParticle::init(uint8_t _nPalline, Ball* _pallinaRef, uint8_t _parentI
   id = _cpId;
   maxExpansion = _maxExpansion;
   state = IDLE;
-  Serial.print("cp: ");
-  Serial.print( id );
-  Serial.println(";");
+  if(DEBUG_CP) {
+    Serial.print("cp: ");
+    Serial.print( id );
+    Serial.println(";");
+  }
 }
 
 void CircleParticle::update()
@@ -97,6 +99,7 @@ void CircleParticle::update()
   {
     // particle is on IDLE state so do nothing
   }
+  
   if( DEBUG_CP ) {
     Serial.print("\tCP ");
     Serial.print(parentId);

@@ -18,8 +18,6 @@
  */
 
 
-
-
 #include "Ball.h"
 #define NPALLINE 10
 Ball palline[NPALLINE];
@@ -27,10 +25,10 @@ Ball palline[NPALLINE];
 // Leds Per Ball: how many LEDs ar dedicated to each ball
 const uint8_t LPB = 7;
 
-
+// this are the wall dimensions (in virtual units the don't correspond to centimeters)
 #define WALL_W (100)
 #define WALL_H (100)
-// balls coords
+// balls coords (created using a sepcial processing sketch)
 float xs[] = { 91.5, 59.125, 25.25, 58.499996, 91.375, 74.625, 40.875, 8.375, 41.375, 59.249996 };
 float ys[] = { 22.125, 7.75, 22.125, 35.75, 49.875, 64.5, 50.375004, 65.0, 79.0, 93.625 };
 
@@ -44,7 +42,7 @@ float ys[] = { 22.125, 7.75, 22.125, 35.75, 49.875, 64.5, 50.375004, 65.0, 79.0,
 #include "Limulo_MPR121.h"
 
 const uint8_t NMPR = 1;
-const uint8_t NPADS[] = {NPALLINE}; // NPALLINE
+const uint8_t NPADS[] = {10, 12, 12, 12}; // NPALLINE
 #define FIRST_MPR_ADDR 0x5A
 
 struct mpr121
@@ -55,6 +53,7 @@ struct mpr121
   uint16_t lasttouched = 0;
   uint16_t currtouched = 0;
   uint16_t oor=0;
+  boolean bPadState[12];
 };
 
 // an array of mpr121! You can have up to 4 on the same i2c bus
@@ -85,8 +84,6 @@ mpr121 mpr[NMPR];
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT (LPB*NPALLINE)
-
-
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
@@ -159,7 +156,7 @@ void setup()
   }
 
   // Turn all LEDs off ASAP
-  strip.show(); 
+  //strip.show(); 
   strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
 
   // CAPACITIVE STUFF **************************************************************/
@@ -179,6 +176,11 @@ void setup()
     if( DEBUG_MAIN ) Serial.print("MPR ");
     if( DEBUG_MAIN ) Serial.print(i); 
     if( DEBUG_MAIN ) Serial.println(" found!");
+
+    // initialize the array of booleans
+    for(int j=0; j<12; j++) {
+      mpr[i].bPadState[j] = false;
+    }
 
     // possibly initialize the mpr with some initial settings
     mpr[i].cap.setUSL(201);
@@ -219,8 +221,8 @@ void loop()
     {
       if (( mpr[i].currtouched & _BV(j)) && !(mpr[i].lasttouched & _BV(j)) )
       {
-        // pad 'j' has been touched
-        //Serial.print("Pad:"); Serial.print(j); Serial.println("touched!"); 
+        // pad 'j' has been touched 
+        mpr[i].bPadState[j] = true;
         palline[j].touched();
         
         if( bToVVVV ) printAllSensors(); // Send serial data to VVVV
@@ -228,7 +230,7 @@ void loop()
       if (!(mpr[i].currtouched & _BV(j)) && (mpr[i].lasttouched & _BV(j)) )
       {
         // pad 'i' has been released
-        //Serial.print("Pad:"); Serial.print(j); Serial.println("released!");
+        mpr[i].bPadState[j] = false;
         palline[j].released();
         
         if( bToVVVV ) printAllSensors(); // Send serial data to VVVV
@@ -242,6 +244,7 @@ void loop()
     
     if(bToPlotter)
     {
+      /*
       // ### NEW COMMUNICATION PROTOCOL (19-02-2018) ###
       //
       // Send data via serial:
@@ -285,9 +288,30 @@ void loop()
         Serial.write(base>>3); // baseline is a 10 bit value
         Serial.write(filt>>3); // sfiltered is a 10 bit value
       }
-    }
+      */
+      // Send data via serial:
+      // 1. First send a byte containing the address of the mpr + the address of the pad +
+      //    the 'touched' status of the pad; This byte has a value greater than 127 by convention;
+      // 2. Then send two more bytes for 'baseline' and 'filtered' respectively. 
+      //    Because these values are 10bit values and we must send them
+      //    inside a 7bit packet, we must made a 3 times bit shift to the right (/8).
+      //    This way we will loose some precision but this is not important.
+      //    This two other bytes have values lesser than 127 by convention.
+
+      // cycle all the electrodes
+      for(int j=0; j<NPADS[i]; j++)
+      {
+        filt = mpr[i].cap.filteredData(j);
+        base = mpr[i].cap.baselineData(j);
+        b = (1<<7) | (i<<5) | (j<<1) | mpr[i].bPadState[j];
+        Serial.write(b); // send address & touched
+        Serial.write(base / 8); // send base value
+        Serial.write(filt / 8); // send filtered value
+      }
+            
+    } // if(bToPlotter)
     //mpr[i].cap.printOOR(); // added for debug purposes
-  } // go through all the MPRs
+  } //   for(int i=0; i<NMPR; i++)
 
   // PALLINE STUFF
   for(uint8_t i=0; i<NPALLINE; i++) {
@@ -298,7 +322,8 @@ void loop()
   }
   strip.show();
 
-  delay(DELAY_TIME); // put a delay so it isn't overwhelming
+  // put a delay so it isn't overwhelming
+  delay(DELAY_TIME); 
 }
 
 // GET SERIAL DATA
@@ -393,6 +418,39 @@ void getSerialData()
 */
 
 /************************************************************************************
+ * SERIAL EVENT
+ ***********************************************************************************/
+void serialEvent()
+{
+  byte c = Serial.read();
+  // Processing can ask Arduino to send some raw
+  // data in order to get a plotted version of them
+  if (c == 'o') {
+    bToPlotter = true;
+  }
+  else if (c == 'c') {
+    bToPlotter = false;
+  }
+  /*
+  // V4 can open or close the serial communication with Arduino
+  else if( 'a' ) {
+    bToPlotter = false;
+    bToV4 = true;
+  }
+  else if( 'b' ) {
+    bToV4 = false;
+  }
+  */
+  else if (c == 'r')
+  {
+    // reset all the MPR
+    for(int i=0; i<NMPR; i++)
+      mpr[i].cap.reset();
+  }
+}
+
+
+/************************************************************************************
  * PRINT ALL SENSORS
  ***********************************************************************************/
 void printAllSensors()
@@ -409,24 +467,3 @@ void printAllSensors()
     if( DEBUG_MAIN ) Serial.println(";");
   }
 }
-
-
-
-
-/*
-void keyPressed()
-{
-  if(key == 'e' || key == 'E')
-  {
-    // enter Edit Mode
-    bEditMode = !bEditMode;
-  }
-  else
-  {
-    int chosen = int( random(NPALLINE) );
-    //println(chosen);
-    palline[ chosen ].touched();
-  }
-}
-
- */

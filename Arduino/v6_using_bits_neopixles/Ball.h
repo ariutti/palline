@@ -4,8 +4,8 @@
  * - Animation
  * - LED light
  * - Its own Circle Particle
- * Ball is controlled itself by the main program according to
- * the MPR121 capacitive sensors stataus.
+ * Ball is controlled by the main program according to
+ * the MPR121 capacitive sensors status.
  *
  * Each touch on a ball will trigger:
  * - child Animator to make its attack/release animation;
@@ -30,8 +30,9 @@
 
 //#include "Adafruit_DotStar.h"
 #include "Adafruit_NeoPixel.h"
-//extern bool DEBUG;
-#define NCP (2)
+
+// how many circle particle a ball will have?
+#define NCP (3)
 
 class CircleParticle;
 

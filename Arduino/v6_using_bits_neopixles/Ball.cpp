@@ -17,13 +17,15 @@ void Ball::init(int _nPalline, Ball* _ballRef,
   planeH = _h;
   float maxExpansion = calculateMaxExpansion();
 
-  Serial.print("Ball ");
-  Serial.print(idx);
-  Serial.print(" - NCP: ");
-  Serial.print( NCP );
-  Serial.print(",  max expansion: ");
-  Serial.print(maxExpansion);
-  Serial.println(";");
+  if( DEBUG_BALL ) {
+    Serial.print("Ball ");
+    Serial.print(idx);
+    Serial.print(" - NCP: ");
+    Serial.print( NCP );
+    Serial.print(",  max expansion: ");
+    Serial.print(maxExpansion);
+    Serial.println(";");
+  }
 
   for(int i=0; i<NCP; i++) {
     cp[i] = new CircleParticle();
@@ -78,8 +80,10 @@ void Ball::update()
   rawAmp = ar->getY();
   
   // better to square the 0.0 - 1.0 value in order to get a smoother transition
-  rawAmp = rawAmp * rawAmp * BRIGHTNESS;
-  //rawAmp = rawAmp * BRIGHTNESS;
+  //rawAmp = rawAmp * rawAmp * BRIGHTNESS;
+  // think we can use an MAIN overall variable for brigthness
+  rawAmp = rawAmp * rawAmp;
+  
   if( DEBUG_BALL ) Serial.print(rawAmp);
   
   r = rawAmp * BASECOLOR_R;
@@ -106,12 +110,9 @@ void Ball::update()
 
 void Ball::display()
 {
-  for(int j=0; j<LPB; j++)
-  {
+  for(int j=0; j<LPB; j++) {
     strip->setPixelColor(tail+j, r, g, b );
   }
-  //strip->show();
-  //if(DEBUG_BALL) Serial.println();
 }
 
 void Ball::setPos(uint8_t _x, uint8_t _y)
