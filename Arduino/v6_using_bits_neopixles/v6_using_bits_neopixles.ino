@@ -17,19 +17,25 @@
  * each ball is made of capacitive stuff and will act as a pad itself.
  */
 
-bool DEBUG = false;
+
+
 
 #include "Ball.h"
-#define NPALLINE 3
+#define NPALLINE 10
 Ball palline[NPALLINE];
-// balls coords
-//int xs[] = { 20, 5, 40, 50, 60, 80, 100 };
-//int ys[] = { 20, 5, 40, 70, 60, 80, 100 };
 
-float xs[] = { 90.625, 58.25, 19.25, 11.25, 49.625, 91.5, 67.375, 36.625, 52.625, 76.5, 39.625, 19.75 };
-float ys[] = { 9.75, 18.125, 15.5, 40.875, 35.0, 49.125, 52.875, 65.125, 68.375, 85.0, 91.375, 75.75 };
+// Leds Per Ball: how many LEDs ar dedicated to each ball
+const uint8_t LPB = 7;
+
+
 #define WALL_W (100)
 #define WALL_H (100)
+// balls coords
+float xs[] = { 91.5, 59.125, 25.25, 58.499996, 91.375, 74.625, 40.875, 8.375, 41.375, 59.249996 };
+float ys[] = { 22.125, 7.75, 22.125, 35.75, 49.875, 64.5, 50.375004, 65.0, 79.0, 93.625 };
+
+//float xs[] = { 90.625, 58.25, 19.25, 11.25, 49.625, 91.5, 67.375, 36.625, 52.625, 76.5, 39.625, 19.75 };
+//float ys[] = { 9.75, 18.125, 15.5, 40.875, 35.0, 49.125, 52.875, 65.125, 68.375, 85.0, 91.375, 75.75 };
 
 
 /* CAPACITIVE STUFF ****************************************************************/
@@ -37,8 +43,8 @@ float ys[] = { 9.75, 18.125, 15.5, 40.875, 35.0, 49.125, 52.875, 65.125, 68.375,
 #include <Wire.h>
 #include "Limulo_MPR121.h"
 
-const int NMPR = 1;
-const int NPADS[] = {12}; // NPALLINE
+const uint8_t NMPR = 1;
+const uint8_t NPADS[] = {NPALLINE}; // NPALLINE
 #define FIRST_MPR_ADDR 0x5A
 
 struct mpr121
@@ -56,6 +62,47 @@ struct mpr121
 mpr121 mpr[NMPR];
 
 // LEDs /////////////////////////////////////////////////
+// A basic everyday NeoPixel strip test program.
+
+// NEOPIXEL BEST PRACTICES for most reliable operation:
+// - Add 1000 uF CAPACITOR between NeoPixel strip's + and - connections.
+// - MINIMIZE WIRING LENGTH between microcontroller board and first pixel.
+// - NeoPixel strip's DATA-IN should pass through a 300-500 OHM RESISTOR.
+// - AVOID connecting NeoPixels on a LIVE CIRCUIT. If you must, ALWAYS
+//   connect GROUND (-) first, then +, then data.
+// - When using a 3.3V microcontroller with a 5V-powered NeoPixel strip,
+//   a LOGIC-LEVEL CONVERTER on the data line is STRONGLY RECOMMENDED.
+// (Skipping these may work OK on your workbench but can fail in the field)
+
+#include "Adafruit_NeoPixel.h"
+#ifdef __AVR__
+ #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif
+
+// Which pin on the Arduino is connected to the NeoPixels?
+// On a Trinket or Gemma we suggest changing this to 1:
+#define DATAPIN 7   
+
+// How many NeoPixels are attached to the Arduino?
+#define LED_COUNT (LPB*NPALLINE)
+
+
+
+// Declare our NeoPixel strip object:
+Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
+// Argument 1 = Number of pixels in NeoPixel strip
+// Argument 2 = Arduino pin number (most are valid)
+// Argument 3 = Pixel type flags, add together as needed:
+//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
+//   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
+
+
+
+
+/*
 #include "Adafruit_DotStar.h"
 #include <SPI.h>
 
@@ -63,17 +110,18 @@ mpr121 mpr[NMPR];
 #define DATAPIN    5
 #define CLOCKPIN   4
 // How many LEDs we have along the strip
-const int NUMLEDS = 24;
-// Leds Per Ball: how many LEDs ar dedicated to each ball
-const int LPB = 2;
+const uint8_t NUMLEDS = 24;
+
 // in Adafruit DotStar library colors are ordered like this: GREEN, RED, BLUE
 Adafruit_DotStar strip = Adafruit_DotStar(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTAR_BGR);
+*/
+
 
 /* UTILITIES ***********************************************************************/
 // have a pause between loops so it will be not overwelming
 const int DELAY_TIME = 10;
 // utility variables to dataviz values readed from MPR
-boolean bDebug = true;
+boolean DEBUG_MAIN = false;
 boolean bToPlotter = false;
 boolean bToVVVV = true;
 byte b;
@@ -81,7 +129,7 @@ int filt;
 int base;
 
 
-float dist(int xA, int yA, int xB, int yB)
+float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB)
 {
   int A = xB - xA;
   int B = yB - yA;
@@ -92,22 +140,32 @@ float dist(int xA, int yA, int xB, int yB)
 /* SETUP ***************************************************************************/
 void setup()
 {
-  Serial.begin(9600, SERIAL_8N1);
+  Serial.begin(115200, SERIAL_8N1);
   //while(!Serial);
-  if( bDebug ) Serial.println("Serial ready!");
+  if(DEBUG_MAIN) Serial.println("\n\nSerial ready!");
+
+  // LED stuff
+  strip.begin(); // Initialize pins for output
   
   // BALL stuff
-  for(int i=0; i<NPALLINE; i++)
+  for(uint8_t i=0; i<NPALLINE; i++)
   {
+    if(DEBUG_MAIN) {
+      Serial.print("Inizializzazione pallina ");
+      Serial.print(i);
+      Serial.println(";");
+    }
     palline[i].init(NPALLINE, palline, i, xs[i], ys[i], WALL_W, WALL_H, LPB, &strip);
   }
 
   // Turn all LEDs off ASAP
   strip.show(); 
+  strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
 
   // CAPACITIVE STUFF **************************************************************/
+  if(DEBUG_MAIN) Serial.println("Looking for MPRs!");
   // cycle through all the MPR
-  for(int i=0; i<NMPR; i++)
+  for(uint8_t i=0; i<NMPR; i++)
   {
     mpr[i].cap = Limulo_MPR121();
     mpr[i].addr = FIRST_MPR_ADDR + i;
@@ -115,12 +173,12 @@ void setup()
     // Look for the MPR121 chip on the I2C bus
     if ( !mpr[i].cap.begin( mpr[i].addr ) )
     {
-      if( bDebug ) Serial.println("MPR121 not found, check wiring?");
+      if( DEBUG_MAIN ) Serial.println("MPR121 not found, check wiring?");
       while (1);
     }
-    if( bDebug ) Serial.print("MPR ");
-    if( bDebug ) Serial.print(i); 
-    if( bDebug ) Serial.println(" found!");
+    if( DEBUG_MAIN ) Serial.print("MPR ");
+    if( DEBUG_MAIN ) Serial.print(i); 
+    if( DEBUG_MAIN ) Serial.println(" found!");
 
     // possibly initialize the mpr with some initial settings
     mpr[i].cap.setUSL(201);
@@ -138,12 +196,9 @@ void setup()
     mpr[i].cap.setFalling( 1, 1, 2, 1 );
     mpr[i].cap.setRising( 1, 8, 1, 1 );
     mpr[i].cap.setTouched( 1, 1, 1 );
-    mpr[i].cap.setThresholds( 8, 3 );
+    mpr[i].cap.setThresholds( 24, 10 );
     mpr[i].cap.setDebounces(2, 2);
   }
-
-  // LED stuff
-  strip.begin(); // Initialize pins for output
 }
 
 
@@ -154,13 +209,13 @@ void loop()
   
   // CAPACITIVE STUFF **************************************************************/
   // cycle through all the MPRs
-  for(int i=0; i<NMPR; i++)
+  for(uint8_t i=0; i<NMPR; i++)
   {
     // Get the currently touched pads
     mpr[i].currtouched = mpr[i].cap.touched(); 
     
     // cycle through all the electrodes
-    for(int j=0; j<NPADS[i]; j++)
+    for(uint8_t j=0; j<NPADS[i]; j++)
     {
       if (( mpr[i].currtouched & _BV(j)) && !(mpr[i].lasttouched & _BV(j)) )
       {
@@ -223,7 +278,7 @@ void loop()
 
       // Cycle all the electrodes and send pairs of
       // 'baseline' and 'filtered' data. Mind the bit shifting!
-      for(int j=0; j<NPADS; j++)
+      for(uint8_t j=0; j<NPADS; j++)
       {
         base = mpr[i].cap.baselineData(j); 
         filt = mpr[i].cap.filteredData(j);
@@ -235,10 +290,10 @@ void loop()
   } // go through all the MPRs
 
   // PALLINE STUFF
-  for(int i=0; i<NPALLINE; i++) {
+  for(uint8_t i=0; i<NPALLINE; i++) {
     palline[i].update();
   }
-  for(int i=0; i<NPALLINE; i++) {
+  for(uint8_t i=0; i<NPALLINE; i++) {
     palline[i].display();
   }
   strip.show();
@@ -343,15 +398,15 @@ void getSerialData()
 void printAllSensors()
 {
   // cycle through all the mpr
-  for(int i=0; i<NMPR; i++)
+  for(uint8_t i=0; i<NMPR; i++)
   {
     // cycle through all the electrodes
-    for(int j=0; j<NPADS[i]; j++)
+    for(uint8_t j=0; j<NPADS[i]; j++)
     {
       int state = (mpr[i].currtouched & _BV(j)) >> j;
-      if( bDebug ) Serial.print( state );
+      if( DEBUG_MAIN ) Serial.print( state );
     }
-    if( bDebug ) Serial.println(";");
+    if( DEBUG_MAIN ) Serial.println(";");
   }
 }
 

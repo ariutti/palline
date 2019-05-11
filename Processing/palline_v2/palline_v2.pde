@@ -6,7 +6,7 @@ Pallina palline[];
 
 PImage background;
 PFont f;
-final int NPALLINE = 12;
+final int NPALLINE = 10;
 final int pallinaRadius = 30;
 boolean bEditMode = false;
 boolean bShowBackgroundImg = false;
@@ -16,8 +16,7 @@ void setup()
   size(800, 800);
   frameRate(60);
   
-  if( bShowBackgroundImg )
-    background = loadImage("wall.jpg");
+  background = loadImage("wall.jpg");
   //println("image w: " + background.width + ", image h: " + background.height); //3152, 3069
   
   palline = new Pallina[NPALLINE];
@@ -63,33 +62,42 @@ void draw()
 void printCoords()
 {
   // X coords
-  print("[ ");
+  print("float xs[] = { ");
   for(int i=0; i<palline.length; i++) {
-    print( palline[i].getX() );
-    print(", ");
+    print( (palline[i].getX()/width) * 100.0 );
+    if(i != palline.length-1)
+      print(", ");
   }
-  println(" ]");
+  println(" };");
   
   // Y coords
-  print("[ ");
+  print("float ys[] = { ");
   for(int i=0; i<palline.length; i++) {
-    print( palline[i].getY() );
-    print(", ");
+    print( (palline[i].getY() / height) * 100.0);
+    if(i != palline.length-1)
+      print(", ");
   }
-  println(" ]");
+  println(" };");
 }
 
 void keyPressed()
 {
-  if(key == 'e' || key == 'E')
+  if(key == 'b' || key == 'B')
+  {
+    bShowBackgroundImg = !bShowBackgroundImg;
+    if(!bShowBackgroundImg)
+      printCoords();
+  }
+  else if(key == 'e' || key == 'E')
   {
     // enter Edit Mode
     bEditMode = !bEditMode;
   }
-  else
+  else if(key == ' ')
   {
     int chosen = int( random(NPALLINE) );
     //println(chosen);
+    palline[ chosen ].reached();
     palline[ chosen ].touched();
   }
 }
