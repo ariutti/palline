@@ -134,7 +134,7 @@ float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB)
 /* SETUP ***************************************************************************/
 void setup()
 {
-  Serial.begin(115200, SERIAL_8N1);
+  Serial.begin(9600, SERIAL_8N1);
   //while(!Serial);
   if(DEBUG_MAIN) Serial.println("\n\nSerial ready!");
 
