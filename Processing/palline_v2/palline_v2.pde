@@ -6,8 +6,8 @@ Pallina palline[];
 
 PImage background;
 PFont f;
-final int NPALLINE = 10;
-final int pallinaRadius = 30;
+final int NPALLINE = 12 + 12 + 11 + 10;
+final int pallinaRadius = 20;
 boolean bEditMode = false;
 boolean bShowBackgroundImg = false;
 
@@ -16,7 +16,8 @@ void setup()
   size(800, 800);
   frameRate(60);
   
-  background = loadImage("wall.jpg");
+  //background = loadImage("wall.jpg");
+  background = loadImage("LayoutPalline_9_in_cantiere.png");
   //println("image w: " + background.width + ", image h: " + background.height); //3152, 3069
   
   palline = new Pallina[NPALLINE];
@@ -64,7 +65,7 @@ void printCoords()
   // X coords
   print("float xs[] = { ");
   for(int i=0; i<palline.length; i++) {
-    print( (palline[i].getX()/width) * 100.0 );
+    print( int((palline[i].getX()/width) * 100.0 ));
     if(i != palline.length-1)
       print(", ");
   }
@@ -73,7 +74,7 @@ void printCoords()
   // Y coords
   print("float ys[] = { ");
   for(int i=0; i<palline.length; i++) {
-    print( (palline[i].getY() / height) * 100.0);
+    print( int((palline[i].getY() / height) * 100.0));
     if(i != palline.length-1)
       print(", ");
   }
