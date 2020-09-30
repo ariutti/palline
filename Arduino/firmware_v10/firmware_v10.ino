@@ -1,25 +1,25 @@
-/*
+/* 
  * 2019-03-14
  * first integration test using an Arduino Micro.
- *
+ * 
  * This sketch is using 5 different classes:
- * - AdaFruit NeoPixels: to menage LED strip;
+ * - AdaFruit DotStar: to menage LED strip;
  * - Limulo_MPR121: Adafruit_MPR121 modification to menage an MPR121 board;
  * - Ball: main abstraction of the physical Ball object;
  * - CircleParticle: each Ball has it's own Circle particle which will expand when the ball is touched to reach neighbour balls;
  * - AnimAR: an utility class to animate the light;
- *
+ * 
  * Each ball is placed inside an imaginary plane of WALL_W x WALL_H dimension and has
  * its own coordinates (xs, ys). Coordinates will be useful to calculate what ball
  * will be lit and when according to the expanding CircleParticle from a touched ball.
- *
- * We have as many MPR121 capacitive pads as the number of Balls because
+ * 
+ * We have as many MPR121 capacitive pads as the number of Balls because 
  * each ball is made of capacitive stuff and will act as a pad itself.
  */
 
 
 #include "Ball.h"
-#define NPALLINE 48
+#define NPALLINE (12 + 12 + 11 + 10) // we a total of 45 balls
 Ball palline[NPALLINE];
 
 // Leds Per Ball: how many LEDs ar dedicated to each ball
@@ -30,8 +30,11 @@ const uint8_t LPB = 7;
 #define WALL_H (100)
 // balls coords (created using a sepcial processing sketch)
 
-float xs[] = {0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,};
-float ys[] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5};
+//float xs[] = {0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,};
+//float ys[] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5};
+
+uint8_t xs[] = { 47, 40, 34, 29, 17, 11, 16, 28, 40, 28, 40, 35, 23, 10, 22, 29, 17, 10, 16, 28, 34, 47, 51, 41, 46, 58, 58, 70, 70, 64, 81, 88, 88, 82, 76, 64, 70, 58, 52, 64, 64, 81, 88, 76, 88 };
+uint8_t ys[] = { 16, 9, 21, 10, 16, 27, 38, 33, 38, 44, 49, 55, 50, 55, 60, 68, 72, 78, 89, 89, 84, 90, 78, 72, 61, 55, 67, 66, 72, 83, 84, 89, 67, 61, 50, 44, 38, 33, 27, 21, 9, 15, 21, 27, 38 };
 
 /* CAPACITIVE STUFF ****************************************************************/
 
@@ -39,7 +42,7 @@ float ys[] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,7.5,7.5,7.5,7.5,7.
 #include "Limulo_MPR121.h"
 
 const uint8_t NMPR = 4;
-const uint8_t NPADS[] = {12, 12, 12, 12}; // NPALLINE
+const uint8_t NPADS[] = {12, 12, 11, 10}; // NPALLINE
 #define FIRST_MPR_ADDR 0x5A
 
 struct mpr121
@@ -82,7 +85,6 @@ mpr121 mpr[NMPR];
 #define LED_COUNT (LPB*NPALLINE)
 
 // Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 // Argument 1 = Number of pixels in NeoPixel strip
 // Argument 2 = Arduino pin number (most are valid)
 // Argument 3 = Pixel type flags, add together as needed:
@@ -91,7 +93,7 @@ Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-
+Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 
 
 
@@ -122,6 +124,9 @@ int filt;
 int base;
 
 
+// An utility function which is used by
+// + the Ball class;
+// + the CircelParticle class;
 float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB)
 {
   int A = xB - xA;
@@ -474,8 +479,9 @@ void printAllSensors()
     for(uint8_t j=0; j<NPADS[i]; j++)
     {
       int state = (mpr[i].currtouched & _BV(j)) >> j;
-      if( DEBUG_MAIN ) Serial.print( state );
+      Serial.print( state );
     }
-    if( DEBUG_MAIN ) Serial.println(";");
+    //Serial.println(";");
   }
+  Serial.println(";");
 }

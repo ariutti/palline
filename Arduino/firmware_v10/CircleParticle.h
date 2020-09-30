@@ -4,16 +4,13 @@
 #include "Arduino.h"
 #include "Ball.h"
 
-
-
-
 class Ball; //forward declaration
 
 class CircleParticle
 {
 private:
   bool DEBUG_CP = false;
-  // the speed of the expanding shokwave
+  // the speed of the expanding shockwave
   float expansionSpeed;
   // a variable to keep track of the variable shockwave radius
   float expandingRadius;
@@ -34,8 +31,6 @@ private:
   // we can only have 48 balls!
   uint8_t touched[6] = {0, 0, 0, 0, 0, 0};
 
-  
-  // this is the ball ID the particle belongs to
   uint8_t nPalline;
   // this is the ball ID the particle belongs to
   uint8_t parentId;

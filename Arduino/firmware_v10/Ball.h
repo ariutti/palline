@@ -53,14 +53,16 @@ private:
   uint16_t RLS_TIME = 500; // time will take for ligh to reach min brightness
 
   // 2019-04-11_ changed the type of animator to be used
+  //AnimAR* ar;
   AnimLine* ar;
   
   // DISTRIBUTED BEHAVIOUR STUFF
   //CircleParticle* cp;
   CircleParticle* cp[NCP];
   
-  // the speed of the expanding shockwave
+  // the speed of the expanding shokwave
   float EXPANSION_SPEED = 1.5; // 0.5
+  
   // LED stuff
   //Adafruit_DotStar* strip;
   Adafruit_NeoPixel* strip;
@@ -71,9 +73,9 @@ private:
   float rawAmp;
   // indexes of first/last pixel of the block
   uint16_t head, tail;
+  
   // a variable to change overall brightness
   float BRIGHTNESS = 0.9;
-  
   // variable to set the BASECOLOR (ie the color we chose for the LEDs light)
   uint8_t BASECOLOR_R = 255;
   uint8_t BASECOLOR_G = 255;
@@ -88,7 +90,7 @@ public:
   uint8_t posX, posY; // position
 
   Ball() {};
-  void init(int _nPalline, Ball* _pallinaRef,
+  void init(uint8_t _nPalline, Ball* _pallinaRef,
             uint8_t _idx,
             float _x, float _y, float _w, float _h,
             uint8_t _LPB,
@@ -97,7 +99,7 @@ public:
   int calculateMaxExpansion();
   void update();
   void display();
-  //boolean inside();
+  boolean inside();
   void setPos(uint8_t _x, uint8_t _y);
 
   // two methods to do quite the same thing. You will find that the two methods
@@ -107,13 +109,10 @@ public:
   // trigger any circle particle emission by the reached ball.
   void touched();
   void reached();
-  
+
   // This method is called by the main loop when there's a release on the corresponding
   // MPR pad. This method does nothing at all for the moment.
   void released() {};
-  
   void printId();
 };
-
-
 #endif

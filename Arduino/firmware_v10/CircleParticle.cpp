@@ -34,6 +34,8 @@ void CircleParticle::init(uint8_t _nPalline, Ball* _pallinaRef, uint8_t _parentI
   }
 }
 
+
+
 // CIRCLE PARTICLE UPDATE
 // This method is called by the parent ball update method.
 // It makes the Circle Particle behaving differntly according to its internale status.
@@ -45,12 +47,13 @@ void CircleParticle::update()
   if( state == EXPANSION )
   {
     // if we are here it meas particle is expanding
-    expandingRadius = expandingRadius + expansionSpeed;
 
     // TODO: expansion speed is something unrelated from time. It depends
     // on the MCU speed of calculation and also on the various "delay"s in the code.
     // It would be better to change it and expressing it in terms of time (seconds or ms)
     // in some way.
+    expandingRadius = expandingRadius + expansionSpeed;
+
     if(expandingRadius >= maxExpansion)
     {
       // if expansione has reached its maximum
@@ -68,14 +71,13 @@ void CircleParticle::update()
     {
       // if we are here it means the particle is expanding but in
       // hasn't reached its maximum yet. So we must check if
-      // the "shockwave" is colliding with some ball
+      // the "shockwave" is colliding with some ball.
 
       // Calculate the coords of the shockwave epicenter;
       float emitterX = pallinaRef[ parentId ].posX;
       float emitterY = pallinaRef[ parentId ].posY;
-
       // Then examine each single ball of the wall which is not the parent ball
-      for(int j=0; j<nPalline; j++)
+      for(uint8_t j=0; j<nPalline; j++)
       {
         if( j != parentId )
         {
@@ -147,7 +149,6 @@ void CircleParticle::update()
   }
 }
 
-
 // CIRLCE PARTICLE EXPLODE
 // This method is called by the parent ball when a user has touched the ball.
 // The method is only responsible of changing the Circle Particle internal status
@@ -180,6 +181,7 @@ float CircleParticle::getStatus()
 //    touched[j] = touched[j] & _BV(k);
 //  }  
 //}
+
 
 // CIRCLE PARTICLE RESET STATUS
 // Resets the touched data structure.
@@ -215,6 +217,8 @@ void CircleParticle::clearBall( uint8_t ballIndex )
   int bitIndex  = ballIndex % 8;
   bitClear(touched[ byteIndex ], bitIndex);
 }
+
+
 
 // CIRCLE PARTICLE READ BALL
 // Read the status of the examined ball from the bytes data structure "touched".

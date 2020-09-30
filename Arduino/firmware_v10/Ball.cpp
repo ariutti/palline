@@ -13,7 +13,7 @@ extern float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB);
 // * the overall wall dimensions;
 // * the number of LEDs the ball is using (this is a constant);
 // * a reference to the LED strip;
-void Ball::init(int _nPalline, Ball* _ballRef, 
+void Ball::init(uint8_t _nPalline, Ball* _ballRef, 
                    uint8_t _idx, 
                    float _x, float _y, float _w, float _h, 
                    uint8_t _LPB,
@@ -108,7 +108,7 @@ void Ball::update()
   // better to square the 0.0 - 1.0 value in order to get a smoother transition
   //rawAmp = rawAmp * rawAmp * BRIGHTNESS;
   // think we can use an MAIN overall variable for brigthness
-  rawAmp = rawAmp * rawAmp * BRIGHTNESS;
+  rawAmp = rawAmp * rawAmp;
   
   if( DEBUG_BALL ) Serial.print(rawAmp);
   
@@ -134,7 +134,6 @@ void Ball::update()
   }
 }
 
-
 // BALL DISPLAY
 // The ball display function simply apply the brightness calculation from the
 // "update" to the actual ball LEDs.
@@ -149,15 +148,6 @@ void Ball::setPos(uint8_t _x, uint8_t _y)
 {
   posX = _x;
   posY = _y;
-}
-
-
-// BALL REACHED
-// This method is called by the Circle Particle when its expanding radius reaches
-// the ball.
-void Ball::reached()
-{
-  ar->trigger();
 }
 
 
@@ -192,11 +182,22 @@ void Ball::touched()
   // so simply exit the function.
 }
 
+
+// BALL REACHED
+// This method is called by the Circle Particle when its expanding radius reaches
+// the ball.
+void Ball::reached()
+{
+  ar->trigger();
+}
+
+
 void Ball::printId()
 {
   Serial.print("my name is ");
   Serial.println(idx);
 }
+
 
 
 // Max expansion is a distance we will use to decide when to destroying the circle Particle
