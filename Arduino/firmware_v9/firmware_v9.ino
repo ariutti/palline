@@ -1,19 +1,19 @@
-/* 
+/*
  * 2019-03-14
  * first integration test using an Arduino Micro.
- * 
+ *
  * This sketch is using 5 different classes:
- * - AdaFruit DotStar: to menage LED strip;
+ * - AdaFruit NeoPixels: to menage LED strip;
  * - Limulo_MPR121: Adafruit_MPR121 modification to menage an MPR121 board;
  * - Ball: main abstraction of the physical Ball object;
  * - CircleParticle: each Ball has it's own Circle particle which will expand when the ball is touched to reach neighbour balls;
  * - AnimAR: an utility class to animate the light;
- * 
+ *
  * Each ball is placed inside an imaginary plane of WALL_W x WALL_H dimension and has
  * its own coordinates (xs, ys). Coordinates will be useful to calculate what ball
  * will be lit and when according to the expanding CircleParticle from a touched ball.
- * 
- * We have as many MPR121 capacitive pads as the number of Balls because 
+ *
+ * We have as many MPR121 capacitive pads as the number of Balls because
  * each ball is made of capacitive stuff and will act as a pad itself.
  */
 
@@ -58,7 +58,6 @@ struct mpr121
 mpr121 mpr[NMPR];
 
 // LEDs /////////////////////////////////////////////////
-// A basic everyday NeoPixel strip test program.
 
 // NEOPIXEL BEST PRACTICES for most reliable operation:
 // - Add 1000 uF CAPACITOR between NeoPixel strip's + and - connections.

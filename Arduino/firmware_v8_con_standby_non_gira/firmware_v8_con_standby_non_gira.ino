@@ -1,19 +1,19 @@
-/* 
+/*
  * 2019-03-14
  * first integration test using an Arduino Micro.
- * 
+ *
  * This sketch is using 5 different classes:
- * - AdaFruit DotStar: to menage LED strip;
+ * - AdaFruit NeoPixels: to menage LED strip;
  * - Limulo_MPR121: Adafruit_MPR121 modification to menage an MPR121 board;
  * - Ball: main abstraction of the physical Ball object;
  * - CircleParticle: each Ball has it's own Circle particle which will expand when the ball is touched to reach neighbour balls;
  * - AnimAR: an utility class to animate the light;
- * 
+ *
  * Each ball is placed inside an imaginary plane of WALL_W x WALL_H dimension and has
  * its own coordinates (xs, ys). Coordinates will be useful to calculate what ball
  * will be lit and when according to the expanding CircleParticle from a touched ball.
- * 
- * We have as many MPR121 capacitive pads as the number of Balls because 
+ *
+ * We have as many MPR121 capacitive pads as the number of Balls because
  * each ball is made of capacitive stuff and will act as a pad itself.
  */
 
@@ -22,13 +22,13 @@
 #define NPALLINE 48
 Ball palline[NPALLINE];
 
-// Leds Per Ball: how many LEDs ar dedicated to each ball
+// Leds Per Ball: how many LEDs are dedicated to each ball
 const uint8_t LPB = 7;
 
 // this are the wall dimensions (in virtual units the don't correspond to centimeters)
 #define WALL_W (100)
 #define WALL_H (100)
-// balls coords (created using a sepcial processing sketch)
+// balls coords (created using a special processing sketch)
 
 float xs[] = {0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,0.0,8.33,16.67,25.0,33.33,41.67,50.0,58.33,66.67,75.0,83.33,91.67,91.67,83.33,75.0,66.67,58.33,50.0,41.67,33.33,25.0,16.67,8.33,0.0,};
 float ys[] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5,22.5};
@@ -58,7 +58,6 @@ struct mpr121
 mpr121 mpr[NMPR];
 
 // LEDs /////////////////////////////////////////////////
-// A basic everyday NeoPixel strip test program.
 
 // NEOPIXEL BEST PRACTICES for most reliable operation:
 // - Add 1000 uF CAPACITOR between NeoPixel strip's + and - connections.
@@ -77,13 +76,12 @@ mpr121 mpr[NMPR];
 
 // Which pin on the Arduino is connected to the NeoPixels?
 // On a Trinket or Gemma we suggest changing this to 1:
-#define DATAPIN 6   
+#define DATAPIN 6
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT (LPB*NPALLINE)
 
 // Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 // Argument 1 = Number of pixels in NeoPixel strip
 // Argument 2 = Arduino pin number (most are valid)
 // Argument 3 = Pixel type flags, add together as needed:
@@ -93,6 +91,7 @@ Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
 
+Adafruit_NeoPixel strip(LED_COUNT, DATAPIN, NEO_GRB + NEO_KHZ800);
 
 
 
@@ -114,7 +113,7 @@ Adafruit_DotStar strip = Adafruit_DotStar(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTAR_BG
 /* UTILITIES ***********************************************************************/
 // have a pause between loops so it will be not overwelming
 const int DELAY_TIME = 10;
-// utility variables to dataviz values readed from MPR
+// utility variables to dataviz values read from MPR
 boolean DEBUG_MAIN = true;
 boolean bToPlotter = false;
 boolean bToVVVV = false;
@@ -123,6 +122,23 @@ int filt;
 int base;
 
 
+// STANDBY STUFF *******************************************************************/
+// internal status
+enum {
+  STANDBY_MODE = 0,
+  ACTIVE_MODE
+} mode;
+unsigned long currentTime = 0;
+// This represent the time we have to wait before passing
+// to the STANDBY_MODE after the user inactivity
+#define TIME_TO_WAIT_BEFORE_STANDBYING 10000 // ms
+// When in standby, this represent the time between consecutive
+// ball triggerings.
+#define TIME_BETWEEN_STANDBY_TRIGGERING 1000 // ms
+
+// an utility function which is used by
+// + the Ball class;
+// + the CircelParticle class;
 float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB)
 {
   int A = xB - xA;
@@ -140,7 +156,7 @@ void setup()
 
   // LED stuff
   strip.begin(); // Initialize pins for output
-  
+
   // BALL stuff
   for(uint8_t i=0; i<NPALLINE; i++)
   {
@@ -149,13 +165,14 @@ void setup()
       Serial.print(i);
       Serial.println(";");
     }
+
     palline[i].init(NPALLINE, palline, i, xs[i], ys[i], WALL_W, WALL_H, LPB, &strip);
   }
 
-  
+
   strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
   // Turn all LEDs off ASAP
-  strip.show(); 
+  strip.show();
 
   // CAPACITIVE STUFF **************************************************************/
   if(DEBUG_MAIN) Serial.println("Looking for MPRs!");
@@ -172,7 +189,7 @@ void setup()
       while (1);
     }
     if( DEBUG_MAIN ) Serial.print("MPR ");
-    if( DEBUG_MAIN ) Serial.print(i); 
+    if( DEBUG_MAIN ) Serial.print(i);
     if( DEBUG_MAIN ) Serial.println(" found!");
 
     // initialize the array of booleans
@@ -184,11 +201,11 @@ void setup()
     mpr[i].cap.setUSL(201);
     mpr[i].cap.setTL(180);
     mpr[i].cap.setLSL(130);
-    
+
     // First Filter Iteration
     // Second Filter Iteration
     // Electrode Sample Interval
-    // NOTE: the system seems to behave 
+    // NOTE: the system seems to behave
     // better if these value are more than 0
     mpr[i].cap.setFFI_SFI_ESI(1, 1, 1);  // See AN3890
 
@@ -199,6 +216,10 @@ void setup()
     mpr[i].cap.setThresholds( 24, 10 );
     mpr[i].cap.setDebounces(2, 2);
   }
+
+  // 2020-09-29: state machine stuff
+  currentTime = millis();
+  mode = STANDBY_MODE;
 }
 
 
@@ -206,24 +227,45 @@ void setup()
 void loop()
 {
   //getSerialData();
-  
+
+  // 2020-09-29: state machine stuff
+  if( mode == STANDBY_MODE ) {
+    if( (millis()-currentTime) >= TIME_BETWEEN_STANDBY_TRIGGERING ) {
+      pickRandomBallAndTrigger();
+      currentTime = millis();
+    }
+  } else if ( mode == ACTIVE_MODE ) {
+    if( (millis()-currentTime) >= TIME_TO_WAIT_BEFORE_STANDBYING ) {
+      currentTime = millis();
+      mode = STANDBY_MODE;
+      for(uint8_t i=0; i<NPALLINE; i++) {
+        palline[i].setStandbyBrightnessAndTimes();
+      }
+    }
+  }
+
+
   // CAPACITIVE STUFF **************************************************************/
   // cycle through all the MPRs
   for(uint8_t i=0; i<NMPR; i++)
   {
     // Get the currently touched pads
-    mpr[i].currtouched = mpr[i].cap.touched(); 
-    
+    mpr[i].currtouched = mpr[i].cap.touched();
+
     // cycle through all the electrodes
     for(uint8_t j=0; j<NPADS[i]; j++)
     {
       if (( mpr[i].currtouched & _BV(j)) && !(mpr[i].lasttouched & _BV(j)) )
       {
-        // pad 'j' has been touched 
+        // pad 'j' has been touched
         mpr[i].bPadState[j] = true;
         uint8_t index = composeIndex(i, j);
         palline[ index ].touched();
-        
+
+        // 2020-09-29: change status to ACTIVE if already not
+        currentTime = millis();
+        mode = ACTIVE_MODE;
+
         if( bToVVVV ) printAllSensors(); // Send serial data to VVVV
       }
       if (!(mpr[i].currtouched & _BV(j)) && (mpr[i].lasttouched & _BV(j)) )
@@ -232,7 +274,11 @@ void loop()
         mpr[i].bPadState[j] = false;
         uint8_t index = composeIndex(i, j);
         palline[ index ].released();
-        
+
+        // 2020-09-29: change status to ACTIVE if already not
+        currentTime = millis();
+        mode = ACTIVE_MODE;
+
         if( bToVVVV ) printAllSensors(); // Send serial data to VVVV
       }
     }
@@ -241,7 +287,7 @@ void loop()
 
     mpr[i].oor = mpr[i].cap.getOOR();
 
-    
+
     if(bToPlotter)
     {
       /*
@@ -251,14 +297,14 @@ void loop()
       // 1. 'Status Byte': first we send a byte containing the address of the mpr.
       //    The most significant bit of the byte is 1 (value of the byte is > 127).
       //    This is a convention in order for the receiver program to be able to recognize it;
-      // 2. Then we send 'Data Bytes'. The most significant bit of these bytes is 
+      // 2. Then we send 'Data Bytes'. The most significant bit of these bytes is
       //    always 0 in order to differenciate them from the status byte.
       //    We can send as many data bytes as we want. The only thing to keep in mind
       //    is that we must be coherent the receiver side in order not to create confusion
       //    in receiving the data.
       //
       //    For instance we can send pais of byte containing the 'baseline' and 'filtered'
-      //    data for each mpr pad. 
+      //    data for each mpr pad.
       //
       //    We can also use data bytes for sending information as:
       //    * 'touched' register;
@@ -269,12 +315,12 @@ void loop()
       b = (1<<7) | i;
       Serial.write(b);
       // 2. write 'touched' register
-      b = mpr[i].currtouched & 0x7F; 
+      b = mpr[i].currtouched & 0x7F;
       Serial.write(b); //touch status: pad 0 - 6
       b = (mpr[i].currtouched>>7) & 0x7F;
       Serial.write(b); //touch status: pad 7 - 12 (eleprox)
       // 3. write 'oor' register
-      b = mpr[i].oor & 0x7F; 
+      b = mpr[i].oor & 0x7F;
       Serial.write(b); //oor status: pad 0 - 6
       b = (mpr[i].oor>>7) & 0x7F;
       Serial.write(b); //oor status: pad 7 - 12 (eleprox)
@@ -283,7 +329,7 @@ void loop()
       // 'baseline' and 'filtered' data. Mind the bit shifting!
       for(uint8_t j=0; j<NPADS; j++)
       {
-        base = mpr[i].cap.baselineData(j); 
+        base = mpr[i].cap.baselineData(j);
         filt = mpr[i].cap.filteredData(j);
         Serial.write(base>>3); // baseline is a 10 bit value
         Serial.write(filt>>3); // sfiltered is a 10 bit value
@@ -292,7 +338,7 @@ void loop()
       // Send data via serial:
       // 1. First send a byte containing the address of the mpr + the address of the pad +
       //    the 'touched' status of the pad; This byte has a value greater than 127 by convention;
-      // 2. Then send two more bytes for 'baseline' and 'filtered' respectively. 
+      // 2. Then send two more bytes for 'baseline' and 'filtered' respectively.
       //    Because these values are 10bit values and we must send them
       //    inside a 7bit packet, we must made a 3 times bit shift to the right (/8).
       //    This way we will loose some precision but this is not important.
@@ -308,7 +354,7 @@ void loop()
         Serial.write(base / 8); // send base value
         Serial.write(filt / 8); // send filtered value
       }
-            
+
     } // if(bToPlotter)
     //mpr[i].cap.printOOR(); // added for debug purposes
   } //   for(int i=0; i<NMPR; i++)
@@ -323,7 +369,7 @@ void loop()
   strip.show();
 
   // put a delay so it isn't overwhelming
-  delay(DELAY_TIME); 
+  delay(DELAY_TIME);
 }
 
 // GET SERIAL DATA
@@ -331,7 +377,7 @@ void loop()
 /*
 void getSerialData()
 {
-  while (Serial.available() > 0) 
+  while (Serial.available() > 0)
   {
     char c = Serial.read();
     // the message from VVVV is finished
@@ -368,13 +414,13 @@ void getSerialData()
         else
         {
           temp = "";
-        } 
+        }
       }
       else
       {
         temp = "";
       }
-    } 
+    }
     else
     {
       // if the message from Processing is not finished yet,
@@ -383,12 +429,12 @@ void getSerialData()
     }
   }
 
- 
 
 
 
-  
-  while (Serial.available() > 0) 
+
+
+  while (Serial.available() > 0)
   {
     byte c = Serial.read();
     // Processing can ask Arduino to send some raw
@@ -426,7 +472,22 @@ int composeIndex(int mprIndex, int padIndex) {
   for(int i=0; i<mprIndex; i++) {
     acc += NPADS[i];
   }
-  return acc + padIndex;  
+  return acc + padIndex;
+}
+
+
+/************************************************************************************
+ * PICK A RANDOM BALL AND TRIGGER IT
+ ***********************************************************************************/
+int pickRandomBallAndTrigger() {
+  // 1. calculate a random index of a ball
+  uint8_t index = random( NPALLINE );
+  // change the max brightness of the ball
+  //palline[ index ].reached();
+  // change the timing of the ball
+  //palline[ index ].reached();
+  // 2. trigger it
+  palline[ index ].reached();
 }
 
 
