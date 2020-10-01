@@ -3,7 +3,6 @@
 // see main file to look at the implementation
 extern float dist(uint8_t xA, uint8_t yA, uint8_t xB, uint8_t yB);
 
-
 // BALL INIT
 // Each Ball needs:
 // * the total number of balls of the exhibit;
@@ -18,9 +17,8 @@ void Ball::init(uint8_t _nPalline, Ball* _ballRef,
                    float _x, float _y, float _w, float _h, 
                    uint8_t _LPB,
                    /*Adafruit_DotStar* _strip*/
-                   Adafruit_NeoPixel* _strip,
-                   float _brightness,
-                   uint16_t _t_atk, uint16_t _t_rls)
+                   Adafruit_NeoPixel* _strip
+                   )
 {
   nPalline = _nPalline;
   idx = _idx;
@@ -51,8 +49,8 @@ void Ball::init(uint8_t _nPalline, Ball* _ballRef,
   // adjustment of its LEDs according to 2 different phases with two separate timing.
   // * attack time;
   // * release time;
-  ar = new AnimLine();
-  ar->init(_t_atk, _t_rls);
+  ar = new AnimARv2();
+  ar->init(STANDBY_ATK_TIME, STANDBY_RLS_TIME);
 
   // Keep internally a reference to the LED strip
   // and calculate the index of the first an last LEDs of this
@@ -70,7 +68,7 @@ void Ball::init(uint8_t _nPalline, Ball* _ballRef,
     Serial.println(";");
   }
 
-  brightness = _brightness;
+  brightness = STANDBY_BRIGHTNESS;
   rawAmp = 0.0;
 
   // TODO: improve these two fucntions
@@ -111,7 +109,7 @@ void Ball::update()
   // better to square the 0.0 - 1.0 value in order to get a smoother transition
   //rawAmp = rawAmp * rawAmp * BRIGHTNESS;
   // think we can use an MAIN overall variable for brigthness
-  rawAmp = rawAmp * rawAmp;
+  rawAmp = rawAmp * rawAmp * brightness;
   
   if( DEBUG_BALL ) Serial.print(rawAmp);
   
@@ -168,7 +166,8 @@ void Ball::touched()
   }
 
   // show a flash light for the touched ball
-  ar->trigger();
+  brightness = ACTIVE_BRIGHTNESS;
+  ar->trigger( ACTIVE_ATK_TIME, ACTIVE_RLS_TIME );
 
   // then make one of its circle particle explode.
   
@@ -191,7 +190,21 @@ void Ball::touched()
 // the ball.
 void Ball::reached()
 {
-  ar->trigger();
+  brightness = ACTIVE_BRIGHTNESS;
+  ar->trigger( ACTIVE_ATK_TIME, ACTIVE_RLS_TIME );
+}
+
+
+// 2020-10-01
+// BALL STANDBY TOUCH
+// A new instance method which the main loop will call randomly when in STANDBY MODE.
+// As you see, when the ball is "touched" this way the method also change the overall brightness 
+// of the light and also the timing constants for the Ataack-Release-Animator.
+// The same thing is done in "touched" and "reached" methods, where brightness and timing constants
+// are also modified to their "active" versions.
+void Ball::standbyTouch() {
+  brightness = STANDBY_BRIGHTNESS;
+  ar->trigger( STANDBY_ATK_TIME, STANDBY_RLS_TIME );
 }
 
 
@@ -217,15 +230,4 @@ int Ball::calculateMaxExpansion()
   winner = max(winner, d3);
   winner = max(winner, d4);
   return winner;
-}
-
-
-// 2020-09-30
-// Two new functions to change the brightness and AR timing for the balls
-void Ball::changeBrightnessAndTimes(float _brightness, uint16_t _t_atk, uint16_t _t_rls ) {
-  // change the brightness to the ACTIVE BRIGHTNESS
-  brightness = _brightness;
-  // 2020-09-29:
-  // use active times instead of stanby times
-  ar->setTimes( _t_atk, _t_rls );
 }

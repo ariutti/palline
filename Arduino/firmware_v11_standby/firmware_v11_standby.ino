@@ -150,18 +150,21 @@ unsigned long currentTime = 0;
 #define TIME_BETWEEN_STANDBY_TRIGGERING 1000 // ms
 
 
-//2020-09-30 
-// ANIMATION & TIMING STUFF
-const uint16_t ACTIVE_ATK_TIME = 250; // time will take for ligh to reach max brightness
-const uint16_t ACTIVE_RLS_TIME = 500; // time will take for ligh to reach min brightness
 
-//added some new timing variables to be used
-// in stanby mode (see main loop)
-const uint16_t STANDBY_ATK_TIME = 1000; // time will take for ligh to reach max brightness
-const uint16_t STANDBY_RLS_TIME = 1000; // time will take for ligh to reach min brightness
 
-const float ACTIVE_BRIGHTNESS = 0.9;
-const float STANBY_BRIGHTNESS = 0.5;
+////2020-09-30 
+//// ANIMATION & TIMING STUFF
+//const int ACTIVE_ATK_TIME = 250; // time will take for ligh to reach max brightness
+//const int ACTIVE_RLS_TIME = 500; // time will take for ligh to reach min brightness
+//
+////added some new timing variables to be used
+//// in stanby mode (see main loop)
+//const int STANDBY_ATK_TIME = 1000; // time will take for ligh to reach max brightness
+//const int STANDBY_RLS_TIME = 1000; // time will take for ligh to reach min brightness
+//const float ACTIVE_BRIGHTNESS = 0.9;
+//const float STANDBY_BRIGHTNESS = 0.5;
+
+
 
 /* SETUP ***************************************************************************/
 void setup()
@@ -181,7 +184,8 @@ void setup()
       Serial.print(i);
       Serial.println(";");
     }
-    palline[i].init(NPALLINE, palline, i, xs[i], ys[i], WALL_W, WALL_H, LPB, &strip, STANBY_BRIGHTNESS, STANDBY_ATK_TIME, STANDBY_RLS_TIME );
+    //palline[i].init(NPALLINE, palline, i, xs[i], ys[i], WALL_W, WALL_H, LPB, &strip, STANDBY_BRIGHTNESS, STANDBY_ATK_TIME, STANDBY_RLS_TIME );
+    palline[i].init(NPALLINE, palline, i, xs[i], ys[i], WALL_W, WALL_H, LPB, &strip );
   }
 
   
@@ -254,9 +258,10 @@ void loop()
     if( (millis()-currentTime) >= TIME_TO_WAIT_BEFORE_STANDBYING ) {
       currentTime = millis();
       mode = STANDBY_MODE;
-      for(uint8_t i=0; i<NPALLINE; i++) {
-        palline[i].changeBrightnessAndTimes(STANBY_BRIGHTNESS, STANDBY_ATK_TIME, STANDBY_RLS_TIME);
-      }
+      
+//      for(uint8_t i=0; i<NPALLINE; i++) {
+//        palline[i].changeBrightnessAndTimes(STANBY_BRIGHTNESS, STANDBY_ATK_TIME, STANDBY_RLS_TIME);
+//      }
     }
   }
 
@@ -552,10 +557,6 @@ void printAllSensors()
 void pickRandomBallAndTrigger() {
   // 1. calculate a random index of a ball
   uint8_t index = random( NPALLINE );
-  // change the max brightness of the ball
-  //palline[ index ].reached();
-  // change the timing of the ball
-  //palline[ index ].reached();
   // 2. trigger it
-  palline[ index ].reached();
+  palline[ index ].standbyTouch();
 }

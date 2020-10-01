@@ -22,8 +22,7 @@
 #define __PALLINA__
 #include "Arduino.h"
 #include "CircleParticle.h"
-#include "AnimLine.h"
-
+#include "AnimARv2.h"
 
 #include <Wire.h>
 #include "Limulo_MPR121.h"
@@ -49,12 +48,9 @@ private:
   uint8_t planeW, planeH; // these represents the size of the wall (in pixels? in cm?)
   
   // ANIMATION & TIMING STUFF
-  //uint16_t ATK_TIME = 250; // time will take for ligh to reach max brightness
-  //uint16_t RLS_TIME = 500; // time will take for ligh to reach min brightness
-
-  // 2019-04-11_ changed the type of animator to be used
+  // 2020-10-01 changed the type of animator to be used
   //AnimAR* ar;
-  AnimLine* ar;
+  AnimARv2* ar;
   
   // DISTRIBUTED BEHAVIOUR STUFF
   //CircleParticle* cp;
@@ -74,8 +70,7 @@ private:
   // indexes of first/last pixel of the block
   uint16_t head, tail;
   
-  // a variable to change overall brightness
-  //float BRIGHTNESS = 0.9;
+  // a variable to change overall brightness of the LEDs
   float brightness;
   
   // variable to set the BASECOLOR (ie the color we chose for the LEDs light)
@@ -89,6 +84,22 @@ private:
 
 
 public:
+
+  //2020-10-01 
+  // ANIMATION & TIMING STUFF
+  //added some new timing variables to be used
+  // in ACTIVE LOOP mode (see main loop)
+  static const int ACTIVE_ATK_TIME = 250; // time will take for ligh to reach max brightness
+  static const int ACTIVE_RLS_TIME = 500; // time will take for ligh to reach min brightness
+  
+  //added some new timing variables to be used
+  // in STANDBY LOOP mode, the default one (see main loop)
+  static const int STANDBY_ATK_TIME = 1000; // time will take for ligh to reach max brightness
+  static const int STANDBY_RLS_TIME = 1000; // time will take for ligh to reach min brightness
+  // similar thing for the brightness 
+  static const float ACTIVE_BRIGHTNESS = 0.9;
+  static const float STANDBY_BRIGHTNESS = 0.5;
+
   uint8_t posX, posY; // position
 
   Ball() {};
@@ -97,10 +108,11 @@ public:
             float _x, float _y, float _w, float _h,
             uint8_t _LPB,
             /*Adafruit_DotStar* _strip*/
-            Adafruit_NeoPixel* _strip,
-            float _brightness,
-            uint16_t _t_atk, uint16_t _t_rls
+            Adafruit_NeoPixel* _strip //,
+            //float _brightness,
+            //uint16_t _t_atk, uint16_t _t_rls
             );
+
   int calculateMaxExpansion();
   void update();
   void display();
@@ -115,12 +127,17 @@ public:
   void touched();
   void reached();
 
+  // 2020-10-01
+  // added a new funciont to be called when exhibit is in STANDBY MODE. 
+  // See implementation for more detials and also the main loop.
+  void standbyTouch();
+
   // This method is called by the main loop when there's a release on the corresponding
   // MPR pad. This method does nothing at all for the moment.
   void released() {};
   void printId();
 
   //2020-09-30
-  void changeBrightnessAndTimes(float _brightness, uint16_t _t_atk, uint16_t _t_rls );
+  //void changeBrightnessAndTimes(float _brightness, uint16_t _t_atk, uint16_t _t_rls );
 };
 #endif
